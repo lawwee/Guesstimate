@@ -85,12 +85,10 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
        );
 
         s_guesser[requestId] = guesser;
-        s_results[guesser] = ROLL_IN_PROGRESS;
         emit GuessInitiated(requestId, guesser);
     }
 
     function fulfillRandomWords(uint256 requestId , uint256[] memory randomWords) internal override {
-
         // transform the result to a number between 1 and 20 inclusively
         uint256 d20Value = (randomWords[0] % 20) + 1;
         s_results[s_guesser[requestId]] = d20Value;
@@ -102,8 +100,6 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
     }
 
     function color(address player) public view returns (string memory) {
-        require(s_results[player] != 0, "Player has not guessed");
-        require(s_results[player] != ROLL_IN_PROGRESS, "Guess in progress");
         return chooseColor(s_results[player]);
     }
 
@@ -132,6 +128,19 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
             "Peach"
         ];
         return colorNames[id];
+    }
+
+    function pickColor(string memory s_word) public returns(string memory) {
+        if ((lastWavedAt[msg.sender] + 24 hours < block.timestamp) && (lastWavedAt[msg.sender] + 744 hours < block.timestamp)) {
+            console.log("Wait for a month");
+        } else if (lastWavedAt[msg.sender] + 24 hours < block.timestamp) {
+            console.log("Wait for a day");
+        }
+        lastWavedAt[msg.sender] = block.timestamp;
+
+        guessColor(msg.sender);
+        color(msg.sender);
+        return s_word;
     }
 
     // function mintNFT(string memory fword, string memory sword, string memory tword) public {
