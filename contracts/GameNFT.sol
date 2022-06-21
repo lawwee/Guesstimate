@@ -48,7 +48,6 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         s_owner = msg.sender;
         s_subscriptionId = subscriptionId;
         console.log("Lawwee is here");
-
         // seed = (block.timestamp + block.difficulty) % 100;
     }
 
@@ -57,34 +56,13 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         _;
     }
 
-    // function random(string memory input) internal pure returns (uint256) {
-    //     return uint256(keccak256(abi.encodePacked(input)));
-    // }
-
-    // function randomColor(string memory input) public view returns (uint256) {
-    //     uint256 rand = random(string(abi.encodePacked("Color", input)));
-    //     rand = rand % colors.length;
-    //     return uint256(keccak256(abi.encodePacked(rand)));
-    // }
-
-    // function pickRandomColor(uint256 tokenId) public view returns (string memory) {
-    //     uint256 rando = randomColor(string(abi.encodePacked("RanDomCOloR", Strings.toString(tokenId))));
-    //     uint256 rand = (block.timestamp + block.difficulty + seed + rando) % 100;
-    //     rand = rand % colors.length;
-    //     return colors[rand];
-    // }
-
     function guessColor(address guesser) public onlyOwner returns (uint256 requestId) {
-        require(s_results[guesser] == 0, "Already rolled");
-        requestId = COORDINATOR.requestRandomWords(
-        s_keyHash,
-        s_subscriptionId,
-        requestConfirmations,
-        callbackGasLimit,
-        numWords
-       );
+        require(lastWavedAt[msg.sender] > block.timestamp, "You need to wait a day");
+        
+        requestId = COORDINATOR.requestRandomWords(s_keyHash, s_subscriptionId, requestConfirmations, callbackGasLimit, numWords);
 
         s_guesser[requestId] = guesser;
+        s_results[guesser] = ROLL_IN_PROGRESS;
         emit GuessInitiated(requestId, guesser);
     }
 
@@ -99,8 +77,14 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         return keccak256(abi.encodePacked(s1)) == keccak256(abi.encodePacked(s2));
     }
 
-    function color(address player) public view returns (string memory) {
-        return chooseColor(s_results[player]);
+    function color(address player, string memory word) public view returns (string memory f_word, string memory s_word) {
+        require(s_results[player] != 0, "Dice not rolled");
+        require(s_results[player] != ROLL_IN_PROGRESS, "Roll in progress");
+
+        f_word = chooseColor(s_results[player]);
+        s_word = word;
+
+        return (f_word, s_word);
     }
 
     function chooseColor(uint256 id) private pure returns (string memory) {
@@ -128,19 +112,6 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
             "Peach"
         ];
         return colorNames[id];
-    }
-
-    function pickColor(string memory s_word) public returns(string memory) {
-        if ((lastWavedAt[msg.sender] + 24 hours < block.timestamp) && (lastWavedAt[msg.sender] + 744 hours < block.timestamp)) {
-            console.log("Wait for a month");
-        } else if (lastWavedAt[msg.sender] + 24 hours < block.timestamp) {
-            console.log("Wait for a day");
-        }
-        lastWavedAt[msg.sender] = block.timestamp;
-
-        guessColor(msg.sender);
-        color(msg.sender);
-        return s_word;
     }
 
     // function mintNFT(string memory fword, string memory sword, string memory tword) public {
@@ -206,5 +177,23 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
 
     //     _tokenIds.increment();
     // }
+
+    // function random(string memory input) internal pure returns (uint256) {
+    //     return uint256(keccak256(abi.encodePacked(input)));
+    // }
+
+    // function randomColor(string memory input) public view returns (uint256) {
+    //     uint256 rand = random(string(abi.encodePacked("Color", input)));
+    //     rand = rand % colors.length;
+    //     return uint256(keccak256(abi.encodePacked(rand)));
+    // }
+
+    // function pickRandomColor(uint256 tokenId) public view returns (string memory) {
+    //     uint256 rando = randomColor(string(abi.encodePacked("RanDomCOloR", Strings.toString(tokenId))));
+    //     uint256 rand = (block.timestamp + block.difficulty + seed + rando) % 100;
+    //     rand = rand % colors.length;
+    //     return colors[rand];
+    // }
+
 
 }
