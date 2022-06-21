@@ -33,22 +33,17 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
 
     mapping(uint256 => address) private s_guesser;
     mapping(address => uint256) private s_results;
+    mapping (address => uint256) public lastWavedAt;
 
-    uint256 private seed;
-
+    uint256 guessPrice = 0.001 ether;
     string svgPartOne = "<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='xMinYMin meet' viewBox='0 0 350 350'><style>.base { fill: white; font-family: serif; font-size: 24px; }</style><rect width='100%' height='100%' fill='";
     string svgPartTwo = "'/><text x='50%' y='50%' class='base' dominant-baseline='middle' text-anchor='middle'>";
-
-    string[] colors = ["red"];
-
-    mapping (address => uint256) public lastWavedAt;
 
     constructor(uint64 subscriptionId) VRFConsumerBaseV2(vrfCoordinator) ERC721("Game NFT", "GAME") payable {
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
         s_owner = msg.sender;
         s_subscriptionId = subscriptionId;
         console.log("Lawwee is here");
-        // seed = (block.timestamp + block.difficulty) % 100;
     }
 
     modifier onlyOwner() {
@@ -56,8 +51,9 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         _;
     }
 
-    function guessColor(address guesser) public onlyOwner returns (uint256 requestId) {
+    function guessColor(address guesser) public payable onlyOwner returns (uint256 requestId) {
         require(lastWavedAt[msg.sender] > block.timestamp, "You need to wait a day");
+        require(msg.value >= guessPrice, "You do not have enough ether");
         
         requestId = COORDINATOR.requestRandomWords(s_keyHash, s_subscriptionId, requestConfirmations, callbackGasLimit, numWords);
 
@@ -78,7 +74,7 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
     }
 
     function color(address player, string memory word) public view returns (string memory f_word, string memory s_word) {
-        require(s_results[player] != 0, "Dice not rolled");
+        require(s_results[player] != 0, "Address not submitted");
         require(s_results[player] != ROLL_IN_PROGRESS, "Roll in progress");
 
         f_word = chooseColor(s_results[player]);
@@ -86,6 +82,7 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
 
         return (f_word, s_word);
     }
+
 
     function chooseColor(uint256 id) private pure returns (string memory) {
         // array storing the list of colors 
