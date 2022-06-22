@@ -4,19 +4,36 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 
 contract Greeter {
-    string private greeting;
+    mapping (address => uint256) public hello;
+    uint cooldownTime = 1 minutes;
 
-    constructor(string memory _greeting) {
-        console.log("Deploying a Greeter with greeting:", _greeting);
-        greeting = _greeting;
+    struct Player {
+        address player;
+        uint readyTime;
     }
 
-    function greet() public view returns (string memory) {
-        return greeting;
+    Player[] public players;
+
+    constructor() {
+        console.log("Deploying a Greeter with greeting:");
     }
 
-    function setGreeting(string memory _greeting) public {
-        console.log("Changing greeting from '%s' to '%s'", greeting, _greeting);
-        greeting = _greeting;
+    function greet(address player) external {
+        // require(hello[player] + 24 hours < block.timestamp, "Please wait a day");
+        players.push(Player(player, uint(block.timestamp + cooldownTime)));
+        uint id = players.length - 1;
+        console.log("Hello there:", id);
+        // triggerCooldownTime(player);
     }
+
+    function isReady(Player storage _player) internal view returns(bool) {
+        return (_player.readyTime <= block.timestamp);
+    }
+
+    function there(uint playerId) public view {
+        Player storage player = players[playerId];
+        require (isReady(player), "Please wait a while");
+        console.log("hello there");
+    }
+
 }

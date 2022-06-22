@@ -34,6 +34,14 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
     mapping(uint256 => address) private s_guesser;
     mapping(address => uint256) private s_results;
     mapping (address => uint256) public lastWavedAt;
+    mapping(string => address) internal playerAdds;
+
+    struct Player {
+        string name;
+        address guessPlayer;
+    }
+
+    Player[] public players;
 
     uint256 guessPrice = 0.001 ether;
     string svgPartOne = "<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='xMinYMin meet' viewBox='0 0 350 350'><style>.base { fill: white; font-family: serif; font-size: 24px; }</style><rect width='100%' height='100%' fill='";
@@ -51,11 +59,16 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         _;
     }
 
-    function guessColor(address guesser) public payable onlyOwner returns (uint256 requestId) {
-        require(lastWavedAt[msg.sender] > block.timestamp, "You need to wait a day");
+    function guessColor(string memory _name) public payable onlyOwner returns (uint256 requestId) {
+        require(
+            lastWavedAt[msg.sender] + 1 days < block.timestamp,
+            "Wait a day"
+        );
+        lastWavedAt[msg.sender] = block.timestamp;
+
         require(msg.value >= guessPrice, "You do not have enough ether");
-        
         requestId = COORDINATOR.requestRandomWords(s_keyHash, s_subscriptionId, requestConfirmations, callbackGasLimit, numWords);
+        address guesser = playerAdds[_name];
 
         s_guesser[requestId] = guesser;
         s_results[guesser] = ROLL_IN_PROGRESS;
@@ -73,13 +86,13 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         return keccak256(abi.encodePacked(s1)) == keccak256(abi.encodePacked(s2));
     }
 
-    function color(address player, string memory word) public view returns (string memory f_word, string memory s_word) {
-        require(s_results[player] != 0, "Address not submitted");
-        require(s_results[player] != ROLL_IN_PROGRESS, "Roll in progress");
+    function color(string memory _name, string memory word) public view returns (string memory f_word, string memory s_word) {
+        
+        require(s_results[playerAdds[_name]] != 0, "Address not submitted");
+        require(s_results[playerAdds[_name]] != ROLL_IN_PROGRESS, "Roll in progress");
 
-        f_word = chooseColor(s_results[player]);
+        f_word = chooseColor(s_results[playerAdds[_name]]);
         s_word = word;
-
         return (f_word, s_word);
     }
 

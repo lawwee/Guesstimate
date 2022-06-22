@@ -1,12 +1,19 @@
 const main = async () => {
     const [ owner, randomuser] = await hre.ethers.getSigners()
-    const gameContractFactory = await hre.ethers.getContractFactory("GameNFT");
-    const gameContract = await gameContractFactory.deploy({
-        value: hre.ethers.utils.parseEther("10"),
-    });
+    const gameContractFactory = await hre.ethers.getContractFactory("Greeter");
+    const gameContract = await gameContractFactory.deploy();
     await gameContract.deployed();
 
     console.log("Contract has been deployed to:", gameContract.address); 
+
+    let txn = await gameContract.greet(owner.address);
+    await txn.wait();
+
+    txn = await gameContract.there(0)
+    await txn.wait();
+
+    txn = await gameContract.there(0)
+    await txn.wait();
 
     // let contractBalance = await hre.ethers.provider.getBalance(gameContract.address)
     // console.log("Contract's address before is:", hre.ethers.utils.formatEther(contractBalance));
