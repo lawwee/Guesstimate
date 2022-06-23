@@ -27,14 +27,19 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
     uint256 private constant ROLL_IN_PROGRESS = 42;
 
     address s_owner;
+    uint256 guessPrice = 0.0001 ether;
  
     event GuessInitiated(uint256 indexed requestId, address indexed guesser);
     event GuessResult(uint256 indexed requestId, uint256 indexed result);
 
     mapping(uint256 => address) private s_guesser;
     mapping(address => uint256) private s_results;
-    mapping (address => uint256) public lastWavedAt;
-    mapping(string => address) internal playerAdds;
+    mapping(address => uint256) private lastWavedAt;
+    mapping(address => uint256) private lastWinning;
+    mapping(string => address) private playerAdds;
+    mapping(string => uint256) private playerIds;
+    mapping(address => bool) private successGuess;
+    mapping(address => string) private successColors;
 
     struct Player {
         string name;
@@ -43,7 +48,6 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
 
     Player[] public players;
 
-    uint256 guessPrice = 0.001 ether;
     string svgPartOne = "<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='xMinYMin meet' viewBox='0 0 350 350'><style>.base { fill: white; font-family: serif; font-size: 24px; }</style><rect width='100%' height='100%' fill='";
     string svgPartTwo = "'/><text x='50%' y='50%' class='base' dominant-baseline='middle' text-anchor='middle'>";
 
@@ -64,11 +68,15 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
             lastWavedAt[msg.sender] + 1 days < block.timestamp,
             "Wait a day"
         );
-        lastWavedAt[msg.sender] = block.timestamp;
-
+        require(lastWinning[msg.sender] + 4 weeks < block.timestamp, "Wait a month");
         require(msg.value >= guessPrice, "You do not have enough ether");
+        uint playerId = playerIds[_name];
+        Player storage myPlayer = players[playerId];
+        string memory name = myPlayer.name;
+        require(compareTwoStrings(_name, name), "This is not a valid player");
         requestId = COORDINATOR.requestRandomWords(s_keyHash, s_subscriptionId, requestConfirmations, callbackGasLimit, numWords);
         address guesser = playerAdds[_name];
+        lastWavedAt[msg.sender] = block.timestamp;
 
         s_guesser[requestId] = guesser;
         s_results[guesser] = ROLL_IN_PROGRESS;
@@ -86,14 +94,63 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         return keccak256(abi.encodePacked(s1)) == keccak256(abi.encodePacked(s2));
     }
 
-    function color(string memory _name, string memory word) public view returns (string memory f_word, string memory s_word) {
-        
+    function color(string memory _name, string memory word) public onlyOwner returns(string memory f_word, string memory s_word) {
+        uint playerId = playerIds[_name];
+        Player storage myPlayer = players[playerId];
+        string memory name = myPlayer.name;
+        require(compareTwoStrings(_name, name), "This is not a valid player");        
         require(s_results[playerAdds[_name]] != 0, "Address not submitted");
         require(s_results[playerAdds[_name]] != ROLL_IN_PROGRESS, "Roll in progress");
 
         f_word = chooseColor(s_results[playerAdds[_name]]);
         s_word = word;
-        return (f_word, s_word);
+
+        if (compareTwoStrings(f_word, s_word)) {
+            successGuess[msg.sender] = true;
+            successColors[msg.sender] = f_word;
+        } else {
+            successGuess[msg.sender] = false;
+        }
+
+        return(f_word, s_word);
+    }
+
+    function claimPrize (string memory _name) public payable onlyOwner {
+        uint prizeAmount = 0.00001 ether;
+        require(successGuess[msg.sender] == true, "You have not guessed correctly");
+        require(prizeAmount <= address(this).balance, "Contract does not have enough ether");
+        (bool success, ) = (msg.sender).call{value: prizeAmount}("");
+        require(success, "Failure to complete transaction");
+
+        string memory s_color = successColors[msg.sender];
+        string memory combinedWord = string(abi.encodePacked(_name, "chose", s_color));
+        string memory finalSvg = string(abi.encodePacked(svgPartOne, s_color, svgPartTwo, combinedWord, "</text></svg>"));
+
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name": "',
+                        combinedWord,
+                        '", "description": "A NFT asset won from the guesstimate platform", "image": "data:image/svg+xml;base64',
+                        Base64.encode(bytes(finalSvg)),
+                        '"}'
+                    )
+                )
+            )
+        );
+        string memory finalTokenUri = string(
+            abi.encodePacked("data:application/json;base64,", json)
+        );
+
+        uint newItemId = _tokenIds.current();
+
+        _safeMint(msg.sender, newItemId);
+        _setTokenURI(newItemId, finalTokenUri);
+        console.log("An NFT w/ ID %s has been minted to %s:", newItemId, msg.sender);
+
+        _tokenIds.increment();
+        lastWinning[msg.sender] = block.timestamp;
     }
 
 
@@ -124,69 +181,7 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         return colorNames[id];
     }
 
-    // function mintNFT(string memory fword, string memory sword, string memory tword) public {
-    //     // require(lastWavedAt[msg.sender] + 24 hours < block.timestamp, "Wait a day");
-    //     // require((lastWavedAt[msg.sender] + 24 hours < block.timestamp) && (lastWavedAt[msg.sender] + 744 hours < block.timestamp), "Wait a month");
-    //     if ((lastWavedAt[msg.sender] + 24 hours < block.timestamp) && (lastWavedAt[msg.sender] + 744 hours < block.timestamp)) {
-    //         console.log("Hello");
-    //     } else if (lastWavedAt[msg.sender] + 24 hours < block.timestamp) {
-    //         console.log("World");
-    //     }
 
-    //     lastWavedAt[msg.sender] = block.timestamp;
-
-    //     uint256 newItemId = _tokenIds.current();
-
-    //     string memory someColor = pickRandomColor(newItemId);
-
-    //     string memory combinedWord = string(abi.encodePacked(fword, sword, tword));
-
-    //     string memory finalSvg = string(abi.encodePacked(svgPartOne, someColor, svgPartTwo, combinedWord, "</text></svg>"));
-
-    //     string memory json = Base64.encode(
-    //         bytes(
-    //             string(
-    //                 abi.encodePacked(
-    //                     '{"name": "',
-    //                     combinedWord,
-    //                     '", "description": "A highly acclaimed collection of squares", "image": "data:image/svg+xml;base64',
-    //                     Base64.encode(bytes(finalSvg)),
-    //                     '"}'
-    //                 )
-    //             )
-    //         )
-    //     );
-
-    //     string memory finalTokenUri = string(
-    //         abi.encodePacked("data:application/json;base64,", json)
-    //     );
-
-    //     console.log(
-    //         string(
-    //             abi.encodePacked(
-    //                 "https://nftpreview.0xdev.codes/?code=",
-    //                 finalTokenUri
-    //             )
-    //         )
-    //     );
-
-    //     uint256 prizeAmount = 1 ether;
-
-    //     bool success = compareTwoStrings(someColor, tword);
-    //     if (success == true) {
-    //         require(prizeAmount <= address(this).balance, "You do not have enough ether to send");
-    //         msg.sender.call{value: prizeAmount}("");
-    //         console.log("Finally, Lawwee did it");
-    //     } else {
-    //         console.log("Still proof that he did it");
-    //     }
-
-    //     _safeMint(msg.sender, newItemId);
-    //     _setTokenURI(newItemId, finalTokenUri);
-    //     console.log("An NFT w/ ID %s has been minted to %s:", newItemId, msg.sender);
-
-    //     _tokenIds.increment();
-    // }
 
     // function random(string memory input) internal pure returns (uint256) {
     //     return uint256(keccak256(abi.encodePacked(input)));
