@@ -1,15 +1,7 @@
-# Basic Sample Hardhat Project
+# Guesstimate
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+Guesstimate is a simple play to earn blockchain based game.
 
-Try running some of the following tasks:
+It implements the protocol of the Chainlink Oracle, for generating randomness unto the smart contract.
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+Players simply guess a color against what random color the contract would pick. The contract automatically sends ether to the whoever guesses correctly, and also provides a mintable NFT to the respective addresses.
