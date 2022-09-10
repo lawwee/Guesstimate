@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Unlicence
-pragma solidity ^0.8.4;
+
+pragma solidity ^0.8.9;
 
 library StringLib {
   function compareTwoStrings(string memory s1, string memory s2)

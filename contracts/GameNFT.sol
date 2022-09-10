@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -19,15 +19,15 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
     Counters.Counter private _tokenIds;
 
     uint64 s_subscriptionId;
-    address vrfCoordinator = 0x6168499c0cFfCaCD319c818142124B7A15E857ab;
-    bytes32 s_keyHash = 0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc;
+    address vrfCoordinator = 0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D;
+    bytes32 s_keyHash = 0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15;
     uint32 callbackGasLimit = 40000;
     uint16 requestConfirmations = 3;
     uint32 numWords =  1;
     uint256 private constant ROLL_IN_PROGRESS = 42;
 
     address s_owner;
-    uint256 guessPrice = 0.0001 ether;
+    uint256 guessPrice = 0.001 ether;
  
     event GuessInitiated(uint256 indexed requestId, address indexed guesser);
     event GuessResult(uint256 indexed requestId, uint256 indexed result);
@@ -55,7 +55,6 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
         s_owner = msg.sender;
         s_subscriptionId = subscriptionId;
-        console.log("Lawwee is here");
     }
 
     modifier onlyOwner() {
@@ -63,7 +62,7 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         _;
     }
 
-    function guessColor(string memory _name) public payable onlyOwner returns (uint256 requestId) {
+    function guessColor(string memory _name) public payable returns (uint256 requestId) {
         require(
             lastWavedAt[msg.sender] + 1 days < block.timestamp,
             "Wait a day"
@@ -90,11 +89,11 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         emit GuessResult(requestId, d20Value);
     }
 
-    function compareTwoStrings(string memory s1, string memory s2) public pure returns (bool success) {
+    function compareTwoStrings(string memory s1, string memory s2) private pure returns (bool success) {
         return keccak256(abi.encodePacked(s1)) == keccak256(abi.encodePacked(s2));
     }
 
-    function color(string memory _name, string memory word) public onlyOwner returns(string memory f_word, string memory s_word) {
+    function color(string memory _name, string memory word) public returns(string memory f_word, string memory s_word) {
         uint playerId = playerIds[_name];
         Player storage myPlayer = players[playerId];
         string memory name = myPlayer.name;
@@ -115,8 +114,8 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         return(f_word, s_word);
     }
 
-    function claimPrize (string memory _name) public payable onlyOwner {
-        uint prizeAmount = 0.00001 ether;
+    function claimPrize (string memory _name) external payable {
+        uint prizeAmount = 0.1 ether;
         require(successGuess[msg.sender] == true, "You have not guessed correctly");
         require(prizeAmount <= address(this).balance, "Contract does not have enough ether");
         (bool success, ) = (msg.sender).call{value: prizeAmount}("");
@@ -180,25 +179,4 @@ contract GameNFT is ERC721URIStorage, VRFConsumerBaseV2 {
         ];
         return colorNames[id];
     }
-
-
-
-    // function random(string memory input) internal pure returns (uint256) {
-    //     return uint256(keccak256(abi.encodePacked(input)));
-    // }
-
-    // function randomColor(string memory input) public view returns (uint256) {
-    //     uint256 rand = random(string(abi.encodePacked("Color", input)));
-    //     rand = rand % colors.length;
-    //     return uint256(keccak256(abi.encodePacked(rand)));
-    // }
-
-    // function pickRandomColor(uint256 tokenId) public view returns (string memory) {
-    //     uint256 rando = randomColor(string(abi.encodePacked("RanDomCOloR", Strings.toString(tokenId))));
-    //     uint256 rand = (block.timestamp + block.difficulty + seed + rando) % 100;
-    //     rand = rand % colors.length;
-    //     return colors[rand];
-    // }
-
-
 }
