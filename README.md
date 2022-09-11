@@ -17,7 +17,7 @@ The main functionality of the platform is to allow users guess colors of their c
 
 Herein lies the functionalities available to all users on the platform.
   
-  **There are certain tecnical terms that cannot be explained on here, please refer to [Chainlink Documentation](https://docs.chain.link/) for better understanding of them**
+  **There are certain technical terms that cannot be explained on here, please refer to [Chainlink Documentation](https://docs.chain.link/) for better understanding of them**
   
   * The **GuessPrice** for each guess has been set to _0.001 ether(ETH)_
     
